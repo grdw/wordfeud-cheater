@@ -12,10 +12,10 @@ A little ditty that can figure out what the best words are to put to the table.
 Do `cp example.board current.board` and fill out the current.board file with your letters. Every dot is a single letter.
 
 ### Step 3: Changing board layout
-The default board layout is what is used under `default-layout.board`. If you need to use a different layout, you can. The numbers indicate the following:
+The default board layout is what is used under `default-layout.board`. If you need to use a different layout, you can. A `.` indicates a non-bonus space, and the numbers indicate the following:
 
-1 = Start tile
-2 = Double letter
-3 = Triple letter
-4 = Double word
-5 = Triple word
+1. Start tile
+2. Double letter
+3. Triple letter
+4. Double word
+5. Triple word
