@@ -25,4 +25,7 @@ fn main() {
             wordlist_file
         );
     }
+
+    let letters = &args[2];
+    println!("{}", letters);
 }
