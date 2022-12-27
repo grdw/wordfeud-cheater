@@ -25,6 +25,4 @@ fn main() {
             wordlist_file
         );
     }
-
-    println!("{:?}", args);
 }
