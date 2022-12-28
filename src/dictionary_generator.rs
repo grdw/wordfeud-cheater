@@ -1,7 +1,5 @@
-use rusqlite::{Connection};
-use serial_test::serial;
+use rusqlite::Connection;
 use std::collections::HashSet;
-use std::fs;
 use std::fs::File;
 use std::io::{BufReader, BufRead};
 use std::path::Path;
@@ -188,54 +186,61 @@ pub fn generate(path: String) -> Dictionary {
     dictionary
 }
 
-#[test]
-#[should_panic]
-fn test_panic_generate() {
-    let base_path = String::from("data/does-not-exist");
-    generate(base_path);
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+    use std::fs;
 
-#[test]
-#[serial]
-fn test_success_generate() {
-    // Drop the existing db first
-    let db_file = String::from("data/test/dictionary.sqlite");
-    if Path::new(&db_file).is_file() {
-        fs::remove_file(db_file).unwrap();
+    #[test]
+    #[should_panic]
+    fn test_panic_generate() {
+        let base_path = String::from("data/does-not-exist");
+        generate(base_path);
     }
 
-    let base_path = String::from("data/test");
-    let dictionary = generate(base_path);
+    #[test]
+    #[serial]
+    fn test_success_generate() {
+        // Drop the existing db first
+        let db_file = String::from("data/test/dictionary.sqlite");
+        if Path::new(&db_file).is_file() {
+            fs::remove_file(db_file).unwrap();
+        }
 
-    assert_eq!(dictionary.db_path, String::from("data/test/dictionary.sqlite"));
+        let base_path = String::from("data/test");
+        let dictionary = generate(base_path);
 
-    // The 2nd time it fetches it from cache
-    let base_path = String::from("data/test");
-    let dictionary = generate(base_path);
-    assert_eq!(dictionary.db_path, String::from("data/test/dictionary.sqlite"));
-}
+        assert_eq!(dictionary.db_path, String::from("data/test/dictionary.sqlite"));
 
-#[test]
-#[serial]
-fn get_anagrams() {
-    // Drop the existing db first
-    let db_file = String::from("data/test/dictionary.sqlite");
-    if Path::new(&db_file).is_file() {
-        fs::remove_file(db_file).unwrap();
+        // The 2nd time it fetches it from cache
+        let base_path = String::from("data/test");
+        let dictionary = generate(base_path);
+        assert_eq!(dictionary.db_path, String::from("data/test/dictionary.sqlite"));
     }
 
-    let base_path = String::from("data/test");
-    let dictionary = generate(base_path);
+    #[test]
+    #[serial]
+    fn get_anagrams() {
+        // Drop the existing db first
+        let db_file = String::from("data/test/dictionary.sqlite");
+        if Path::new(&db_file).is_file() {
+            fs::remove_file(db_file).unwrap();
+        }
 
-    let word = String::from("XYZ");
-    let word2 = String::from("TEERS");
-    assert_eq!(dictionary.get_anagrams_for(&word).len(), 0);
-    assert_eq!(
-        dictionary.get_anagrams_for(&word2),
-        vec![
-            String::from("EERST"),
-            String::from("ESTER"),
-            String::from("RESET")
-        ]
-    );
+        let base_path = String::from("data/test");
+        let dictionary = generate(base_path);
+
+        let word = String::from("XYZ");
+        let word2 = String::from("TEERS");
+        assert_eq!(dictionary.get_anagrams_for(&word).len(), 0);
+        assert_eq!(
+            dictionary.get_anagrams_for(&word2),
+            vec![
+                String::from("EERST"),
+                String::from("ESTER"),
+                String::from("RESET")
+            ]
+        );
+    }
 }
