@@ -56,16 +56,30 @@ impl Dictionary {
         Dictionary { db_path: db_path, primes: primes }
     }
 
-    pub fn get_anagrams_for(&self, string: &String) -> Vec<String> {
-        if !self.valid_word(string) {
-            panic!("Invalid letters given: {}", string);
+    pub fn get_anagrams_for(&self, strings: &HashSet<String>) -> Vec<String> {
+        for string in strings {
+            if !self.valid_word(string) {
+                panic!("Invalid letters given: {}", string);
+            }
         }
 
         let conn = Connection::open(&self.db_path).unwrap();
-        let factor = self.prime_factor(string);
+        let mut prime_factors = vec![];
 
-        let mut stmt = conn.prepare("SELECT word FROM words WHERE prime_factor = ? ORDER BY word").unwrap();
-        let mut rows = stmt.query([factor.to_string()]).unwrap();
+        for string in strings {
+            let factor = self.prime_factor(string);
+            prime_factors.push(factor);
+        }
+
+        let factors = prime_factors
+            .iter()
+            .map(|factor| factor.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        let q = format!("SELECT word FROM words WHERE prime_factor IN ({}) ORDER BY word", factors);
+        let mut stmt = conn.prepare(&q).unwrap();
+        let mut rows = stmt.query([]).unwrap();
         let mut anagrams = vec![];
 
         while let Some(row) = rows.next().unwrap() {
@@ -242,10 +256,15 @@ mod tests {
         let dictionary = generate(base_path);
 
         let word = String::from("XYZ");
-        let word2 = String::from("TEERS");
-        assert_eq!(dictionary.get_anagrams_for(&word).len(), 0);
+        let mut set = HashSet::new();
+        set.insert(word);
+        assert_eq!(dictionary.get_anagrams_for(&set).len(), 0);
+
+        let word = String::from("TEERS");
+        let mut set = HashSet::new();
+        set.insert(word);
         assert_eq!(
-            dictionary.get_anagrams_for(&word2),
+            dictionary.get_anagrams_for(&set),
             vec![
                 String::from("EERST"),
                 String::from("ESTER"),

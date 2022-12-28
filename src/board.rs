@@ -8,13 +8,10 @@ pub struct Board<'a> {
 
 impl Board<'_>  {
     pub fn plays(&self) -> Vec<String> {
-        let mut total = vec![];
-        for c in self.combinations() {
-            let mut anagrams = self.dictionary.get_anagrams_for(&c);
-            total.append(&mut anagrams);
-        }
-        total.sort_by(|a, b| a.len().cmp(&b.len()));
-        total
+        let combos = self.combinations();
+        let mut anagrams = self.dictionary.get_anagrams_for(&combos);
+        anagrams.sort_by(|a, b| a.len().cmp(&b.len()));
+        anagrams
     }
 
     fn combinations(&self) -> HashSet<String> {
