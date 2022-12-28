@@ -12,10 +12,10 @@ fn main() {
         panic!("Folder doesn't exist for language '{}'", language);
     }
 
-    let letterpoints_file = format!("{}/letterpoints.json", base_path);
+    let letterpoints_file = format!("{}/letterpoints.txt", base_path);
     if !Path::new(&letterpoints_file).is_file() {
         panic!(
-            "The 'letterpoints.json' file doesn't exist at '{}'",
+            "The 'letterpoints.txt' file doesn't exist at '{}'",
             letterpoints_file
         );
     }
