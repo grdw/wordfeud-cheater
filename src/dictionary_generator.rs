@@ -120,7 +120,7 @@ impl Dictionary {
             .product()
     }
 
-    fn get_anagram_for(&self, string: &String) -> Vec<String> {
+    pub fn get_anagrams_for(&self, string: &String) -> Vec<String> {
         let conn = Connection::open(&self.db_path).unwrap();
         let factor = self.prime_factor(string);
 
@@ -198,9 +198,9 @@ fn get_anagrams() {
 
     let word = String::from("XYZ");
     let word2 = String::from("TEERS");
-    assert_eq!(dictionary.get_anagram_for(&word).len(), 0);
+    assert_eq!(dictionary.get_anagrams_for(&word).len(), 0);
     assert_eq!(
-        dictionary.get_anagram_for(&word2),
+        dictionary.get_anagrams_for(&word2),
         vec![
             String::from("EERST"),
             String::from("ESTER"),

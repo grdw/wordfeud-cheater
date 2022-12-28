@@ -21,7 +21,6 @@ fn main() {
     }
 
     let dictionary = dictionary_generator::generate(base_path);
-
     let letters = &args[2];
-    println!("{}", letters);
+    println!("{:?}", dictionary.get_anagrams_for(letters));
 }
