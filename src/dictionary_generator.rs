@@ -70,7 +70,7 @@ impl Dictionary {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS words (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                word VARCHAR(255) NOT NULL UNIQUE,
+                word VARCHAR(15) NOT NULL UNIQUE,
                 prime_factor BIGINT NOT NULL
             )",
             []
