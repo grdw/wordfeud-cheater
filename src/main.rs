@@ -1,7 +1,9 @@
+mod board;
 mod dictionary_generator;
 
 use std::env;
 use std::path::Path;
+use board::Board;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -21,6 +23,9 @@ fn main() {
     }
 
     let dictionary = dictionary_generator::generate(base_path);
-    let letters = &args[2];
-    println!("{:?}", dictionary.get_anagrams_for(letters));
+    let board = Board {
+        letters: &args[2],
+        dictionary: &dictionary
+    };
+    println!("{:?}", board.plays());
 }

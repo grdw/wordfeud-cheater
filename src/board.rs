@@ -1,0 +1,88 @@
+use crate::dictionary_generator::Dictionary;
+use std::collections::HashSet;
+
+pub struct Board<'a> {
+    pub letters: &'a String,
+    pub dictionary: &'a Dictionary
+}
+
+impl Board<'_>  {
+    pub fn plays(&self) -> Vec<String> {
+        let mut total = vec![];
+        for c in self.combinations() {
+            let mut anagrams = self.dictionary.get_anagrams_for(&c);
+            total.append(&mut anagrams);
+        }
+        total.sort_by(|a, b| a.len().cmp(&b.len()));
+        total
+    }
+
+    fn combinations(&self) -> HashSet<String> {
+        let mut combinations = HashSet::new();
+        let mut output = String::new();
+
+        for i in 2..=self.letters.len() {
+            self.find_unique_combinations(0, i, &mut combinations, &mut output);
+        }
+
+        combinations
+    }
+
+    // Took this algorithm from:
+    // https://www.techiedelight.com/find-distinct-combinations-of-given-length/
+    fn find_unique_combinations(&self,
+                                offset: usize,
+                                length: usize,
+                                hash: &mut HashSet<String>,
+                                list: &mut String) {
+
+        if self.letters.len() == 0 || length > self.letters.len() {
+            return;
+        }
+
+        if length == 0 {
+            hash.insert(list.clone());
+            return;
+        }
+
+        for i in offset..self.letters.len() {
+            list.push(self.letters.chars().nth(i).unwrap());
+            self.find_unique_combinations(i + 1, length - 1, hash, list);
+            list.remove(list.len() - 1);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::Path;
+    use serial_test::serial;
+    use crate::dictionary_generator::generate;
+
+    #[test]
+    #[serial]
+    fn test_combinations_for() {
+        let db_file = String::from("data/test/dictionary.sqlite");
+        if Path::new(&db_file).is_file() {
+            fs::remove_file(db_file).unwrap();
+        }
+
+        let base_path = String::from("data/test");
+        let dictionary = generate(base_path);
+
+        let board = Board {
+            letters: &String::from("TEERS"),
+            dictionary: &dictionary
+        };
+
+        assert_eq!(board.plays(), vec![
+            String::from("ER"),
+            String::from("EET"),
+            String::from("EERST"),
+            String::from("ESTER"),
+            String::from("RESET")
+        ]);
+    }
+}
