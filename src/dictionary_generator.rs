@@ -7,6 +7,7 @@ use std::path::Path;
 const ASCII_OFFSET: u8 = 65; // the letter 'A'
 const LETTER_COUNT: usize = 26;
 const BOARD_SIZE: usize = 15;
+const BATCH_SIZE: usize = 1000;
 
 fn is_prime(number: u8) -> bool {
     if number < 2 {
@@ -133,7 +134,7 @@ impl Dictionary {
                 Err(e) => panic!("Something went wrong reading a line {}", e)
             }
 
-            if batch.len() >= 1000 {
+            if batch.len() >= BATCH_SIZE {
                 self.insert_batch_to_db(&conn, &mut batch);
             }
         }
