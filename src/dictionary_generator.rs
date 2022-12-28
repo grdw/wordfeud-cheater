@@ -147,7 +147,7 @@ pub fn generate(path: String) -> Dictionary {
     }
 
     let db_file = format!("{}/dictionary.sqlite", path);
-    let dictionary = Dictionary::new(db_file.to_string());
+    let dictionary = Dictionary::new(db_file);
 
     if dictionary.generated() {
         return dictionary;

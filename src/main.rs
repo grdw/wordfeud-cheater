@@ -20,10 +20,7 @@ fn main() {
         );
     }
 
-    let wordlist_file = format!("{}/dictionary.sqlite", base_path);
-    if !Path::new(&wordlist_file).is_file() {
-        let dictionary = dictionary_generator::generate(base_path);
-    }
+    let dictionary = dictionary_generator::generate(base_path);
 
     let letters = &args[2];
     println!("{}", letters);
