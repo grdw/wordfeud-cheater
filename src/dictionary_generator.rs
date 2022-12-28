@@ -1,5 +1,6 @@
 use rusqlite::{Connection};
 use serial_test::serial;
+use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
 use std::io::{BufReader, BufRead};
@@ -81,6 +82,8 @@ impl Dictionary {
             []
         ).unwrap();
 
+        let mut batch = HashSet::new();
+
         for line in reader.lines() {
             match line {
                 Ok(word) => {
@@ -97,20 +100,24 @@ impl Dictionary {
 
                     // Skip all the words with non-ASCII chars in them and the one's
                     // that are over the length
-                    if !valid_word || cased_word.len() > BOARD_SIZE {
+                    if !valid_word || cased_word.len() > BOARD_SIZE || cased_word.len() < 2 {
                         continue
                     };
 
                     let product: u128 = self.prime_factor(&cased_word);
+                    batch.insert((cased_word, product));
 
-                    conn.execute(
-                        "INSERT INTO words (word, prime_factor) VALUES (?1, ?2)",
-                        &[&cased_word, &product.to_string()]
-                    ).unwrap();
                 },
                 Err(e) => panic!("Boom! {}", e)
             }
+
+            if batch.len() >= 1000 {
+                insert_batch_to_db(&conn, &mut batch);
+            }
         }
+
+        // Do the final batch
+        insert_batch_to_db(&conn, &mut batch);
     }
 
     fn prime_factor(&self, word: &String) -> u128 {
@@ -124,7 +131,7 @@ impl Dictionary {
         let conn = Connection::open(&self.db_path).unwrap();
         let factor = self.prime_factor(string);
 
-        let mut stmt = conn.prepare("SELECT word FROM words WHERE prime_factor = ?").unwrap();
+        let mut stmt = conn.prepare("SELECT word FROM words WHERE prime_factor = ? ORDER BY word").unwrap();
         let mut rows = stmt.query([factor.to_string()]).unwrap();
         let mut anagrams = vec![];
 
@@ -135,6 +142,30 @@ impl Dictionary {
 
         anagrams
     }
+}
+
+fn insert_batch_to_db(conn: &Connection, batch: &mut HashSet<(String, u128)>) {
+    let values: String = batch
+        .iter()
+        .map(|b| format!("(\"{}\", \"{}\")", b.0, b.1))
+        .collect::<Vec<String>>()
+        .join(",");
+
+    // We use IGNORE here because the wordlist sometimes contains words like
+    // Aaltjes en aaltjes. If "aaltjes" just so happened to be on the next batch,
+    // this can result in a duplicate insert, which individual value(s) we
+    // should just ignore.
+    let query = format!(
+        "INSERT OR IGNORE INTO words (word, prime_factor) VALUES {}",
+        values
+    );
+
+    conn.execute(&query, []).unwrap_or_else(|e| {
+        println!("FAILURE {}", e);
+        0
+    });
+
+    batch.clear();
 }
 
 pub fn generate(path: String) -> Dictionary {
