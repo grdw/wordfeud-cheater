@@ -26,4 +26,4 @@ The default board layout is what is used under `default-layout.board`. If you ne
 cargo run nl "ABCDEFG"
 ```
 
-Where `ABCDEFG` are the letters you currently have.
+Where `ABCDEFG` are the letters you currently have. The first time it is setting up the database, and this - depending on the wordlist - might take a little while. The next time, it should be a quite a lot faster.
