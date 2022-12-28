@@ -56,76 +56,11 @@ impl Dictionary {
         Dictionary { db_path: db_path, primes: primes }
     }
 
-    fn generated(&self) -> bool {
-        Path::new(&self.db_path).is_file()
-    }
-
-    fn setup_db(&self, wordlist_file: &String) {
-        let f = File::open(wordlist_file).unwrap();
-        let reader = BufReader::new(f);
-        let conn = Connection::open(&self.db_path).unwrap();
-
-        // Setting up the table
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS words (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                word VARCHAR(15) NOT NULL UNIQUE,
-                prime_factor BIGINT NOT NULL
-            )",
-            []
-        ).unwrap();
-
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS prime_factor_index ON words (prime_factor)",
-            []
-        ).unwrap();
-
-        let mut batch = HashSet::new();
-
-        for line in reader.lines() {
-            match line {
-                Ok(word) => {
-                    let mut cased_word = word.to_uppercase();
-                    let mut valid_word = true;
-                    cased_word = cased_word.replace("'", "");
-
-                    for c in cased_word.chars() {
-                        if !('A'..='Z').contains(&c) {
-                            valid_word = false;
-                            break;
-                        }
-                    }
-
-                    // Skip all the words with non-ASCII chars in them and the one's
-                    // that are over the length
-                    if !valid_word || cased_word.len() > BOARD_SIZE || cased_word.len() < 2 {
-                        continue
-                    };
-
-                    let product: u128 = self.prime_factor(&cased_word);
-                    batch.insert((cased_word, product));
-
-                },
-                Err(e) => panic!("Boom! {}", e)
-            }
-
-            if batch.len() >= 1000 {
-                insert_batch_to_db(&conn, &mut batch);
-            }
+    pub fn get_anagrams_for(&self, string: &String) -> Vec<String> {
+        if !self.valid_word(string) {
+            panic!("Invalid letters given: {}", string);
         }
 
-        // Do the final batch
-        insert_batch_to_db(&conn, &mut batch);
-    }
-
-    fn prime_factor(&self, word: &String) -> u128 {
-        word
-            .bytes()
-            .map(|c| self.primes[(c - ASCII_OFFSET) as usize])
-            .product()
-    }
-
-    pub fn get_anagrams_for(&self, string: &String) -> Vec<String> {
         let conn = Connection::open(&self.db_path).unwrap();
         let factor = self.prime_factor(string);
 
@@ -140,30 +75,105 @@ impl Dictionary {
 
         anagrams
     }
-}
 
-fn insert_batch_to_db(conn: &Connection, batch: &mut HashSet<(String, u128)>) {
-    let values: String = batch
-        .iter()
-        .map(|b| format!("(\"{}\", \"{}\")", b.0, b.1))
-        .collect::<Vec<String>>()
-        .join(",");
+    fn generated(&self) -> bool {
+        Path::new(&self.db_path).is_file()
+    }
 
-    // We use IGNORE here because the wordlist sometimes contains words like
-    // Aaltjes en aaltjes. If "aaltjes" just so happened to be on the next batch,
-    // this can result in a duplicate insert, which individual value(s) we
-    // should just ignore.
-    let query = format!(
-        "INSERT OR IGNORE INTO words (word, prime_factor) VALUES {}",
-        values
-    );
+    fn valid_word(&self, word: &String) -> bool {
+        let mut valid_chars = true;
+        for c in word.chars() {
+            if !('A'..='Z').contains(&c) {
+                valid_chars = false;
+                break;
+            }
+        }
 
-    conn.execute(&query, []).unwrap_or_else(|e| {
-        println!("FAILURE {}", e);
-        0
-    });
+        valid_chars && word.len() <= BOARD_SIZE && word.len() > 1
+    }
 
-    batch.clear();
+    fn setup_db(&self, wordlist_file: &String) {
+        let f = File::open(wordlist_file).unwrap();
+        let reader = BufReader::new(f);
+        let conn = Connection::open(&self.db_path).unwrap();
+
+        let mut batch = HashSet::new();
+
+        self.create_db_schema(&conn);
+
+        for line in reader.lines() {
+            match line {
+                Ok(word) => {
+                    let mut cased_word = word.to_uppercase();
+                    cased_word = cased_word.replace("'", "");
+
+                    // Skip all the words with non-ASCII chars in them and the one's
+                    // that are over the length
+                    if !self.valid_word(&cased_word) {
+                        continue
+                    };
+
+                    let product: u128 = self.prime_factor(&cased_word);
+                    batch.insert((cased_word, product));
+                },
+                Err(e) => panic!("Something went wrong reading a line {}", e)
+            }
+
+            if batch.len() >= 1000 {
+                self.insert_batch_to_db(&conn, &mut batch);
+            }
+        }
+
+        // Do the final batch
+        self.insert_batch_to_db(&conn, &mut batch);
+    }
+
+    fn create_db_schema(&self, conn: &Connection) {
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS words (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                word VARCHAR(15) NOT NULL UNIQUE,
+                prime_factor BIGINT NOT NULL
+            )",
+            []
+        ).unwrap();
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS prime_factor_index ON words (prime_factor)",
+            []
+        ).unwrap();
+    }
+
+    fn insert_batch_to_db(&self, conn: &Connection, batch: &mut HashSet<(String, u128)>) {
+        let values: String = batch
+            .iter()
+            .map(|b| format!("(\"{}\", \"{}\")", b.0, b.1))
+            .collect::<Vec<String>>()
+            .join(",");
+
+        // We use IGNORE here because the wordlist sometimes contains words like
+        // Aaltjes en aaltjes. If "aaltjes" just so happened to be on the next batch,
+        // this can result in a duplicate insert, which individual value(s) we
+        // should just ignore.
+        let query = format!(
+            "INSERT OR IGNORE INTO words (word, prime_factor) VALUES {}",
+            values
+        );
+
+        conn.execute(&query, []).unwrap_or_else(|e| {
+            println!("FAILURE {}", e);
+            0
+        });
+
+        batch.clear();
+    }
+
+    fn prime_factor(&self, word: &String) -> u128 {
+        word
+            .bytes()
+            .map(|c| self.primes[(c - ASCII_OFFSET) as usize])
+            .product()
+    }
 }
 
 pub fn generate(path: String) -> Dictionary {
