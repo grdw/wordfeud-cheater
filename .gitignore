@@ -1,3 +1,4 @@
 /target
 /data/*/wordlist.txt
+/data/*/dictionary.sqlite
 current.board

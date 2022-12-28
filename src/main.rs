@@ -1,3 +1,5 @@
+mod dictionary_generator;
+
 use std::env;
 use std::path::Path;
 
@@ -18,12 +20,9 @@ fn main() {
         );
     }
 
-    let wordlist_file = format!("{}/wordlist.txt", base_path);
+    let wordlist_file = format!("{}/dictionary.sqlite", base_path);
     if !Path::new(&wordlist_file).is_file() {
-        panic!(
-            "The 'wordlist.txt' file doesn't exist at '{}'",
-            wordlist_file
-        );
+        let dictionary = dictionary_generator::generate(base_path);
     }
 
     let letters = &args[2];
