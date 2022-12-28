@@ -1,5 +1,4 @@
-use rusqlite::{Connection, Result};
-use rusqlite::NO_PARAMS;
+use rusqlite::{Connection};
 use serial_test::serial;
 use std::fs;
 use std::fs::File;
@@ -74,12 +73,12 @@ impl Dictionary {
                 word VARCHAR(255) NOT NULL UNIQUE,
                 prime_factor BIGINT NOT NULL
             )",
-            NO_PARAMS
+            []
         ).unwrap();
 
         conn.execute(
             "CREATE INDEX IF NOT EXISTS prime_factor_index ON words (prime_factor)",
-            NO_PARAMS
+            []
         ).unwrap();
 
         for line in reader.lines() {
