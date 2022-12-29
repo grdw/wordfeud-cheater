@@ -5,7 +5,7 @@ use std::fs;
 pub struct Board<'a> {
     pub letters: &'a String,
     pub dictionary: &'a Dictionary,
-    letterpoints: HashMap<char, u16>,
+    scorer: LetterScorer,
     parsed_board: ParsedBoard
 }
 
@@ -20,37 +20,27 @@ impl Board<'_>  {
         Board {
             letters: letters,
             dictionary: dictionary,
-            letterpoints: Board::parse_letterpoints(letterpoints_path),
+            scorer: LetterScorer::parse(letterpoints_path),
             parsed_board: ParsedBoard::parse(layout_path, current_board_path)
         }
-    }
-
-    fn parse_letterpoints(letterpoints_path: &String) -> HashMap<char, u16> {
-        let mut score = HashMap::new();
-        let letterpoints = fs::read_to_string(letterpoints_path).unwrap();
-
-        for line in letterpoints.split_terminator("\n") {
-            let (c, points) = line.split_once(",").unwrap();
-
-            score.insert(
-                c.chars().nth(0).unwrap(),
-                points.parse::<u16>().unwrap()
-            );
-        }
-
-        score
     }
 
     pub fn anagrams(&self) -> Vec<String> {
         let combos = self.combinations();
         let mut anagrams = self.dictionary.get_anagrams_for(&combos);
 
-        anagrams.sort_by(|a, b| a.len().cmp(&b.len()));
+        anagrams.sort_by(|a, b| {
+            let a_score = self.scorer.score(b, self.letters);
+            let b_score = self.scorer.score(a, self.letters);
+            a_score.cmp(&b_score)
+        });
+
         anagrams
     }
 
     fn optimal_plays(&self) -> Vec<Play> {
         let mut plays = vec![];
+        let mut anagrams = self.anagrams();
 
         if self.parsed_board.is_opening_turn() {
             // make sure it hits the start (7,7)
@@ -173,6 +163,36 @@ struct Play {
     position: (usize, usize)
 }
 
+struct LetterScorer {
+    points: HashMap<char, u16>,
+}
+
+impl LetterScorer {
+    fn parse(path: &String) -> LetterScorer {
+        let mut score = HashMap::new();
+        let letterpoints = fs::read_to_string(path).unwrap();
+
+        for line in letterpoints.split_terminator("\n") {
+            let (c, points) = line.split_once(",").unwrap();
+
+            score.insert(
+                c.chars().nth(0).unwrap(),
+                points.parse::<u16>().unwrap()
+            );
+        }
+
+        LetterScorer { points: score }
+    }
+
+    fn score(&self, word: &String, letters: &String) -> u16 {
+        let mut total_points = 0;
+        for w in word.chars() {
+            total_points += self.points[&w];
+        }
+        total_points
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,11 +225,11 @@ mod tests {
         );
 
         assert_eq!(board.anagrams(), vec![
-            String::from("ER"),
-            String::from("EET"),
             String::from("EERST"),
             String::from("ESTER"),
-            String::from("RESET")
+            String::from("RESET"),
+            String::from("EET"),
+            String::from("ER")
         ]);
     }
 
@@ -237,15 +257,15 @@ mod tests {
         );
 
         assert_eq!(board.anagrams(), vec![
-            String::from("ER"),
-            String::from("MN"),
-            String::from("ZE"),
-            String::from("EET"),
+            String::from("STEUR"),
             String::from("EERST"),
             String::from("ESTER"),
             String::from("RESET"),
             String::from("STAAR"),
-            String::from("STEUR")
+            String::from("ZE"),
+            String::from("EET"),
+            String::from("MN"),
+            String::from("ER")
         ]);
 
         assert_eq!(board.optimal_plays(), vec![
