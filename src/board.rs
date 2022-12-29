@@ -53,25 +53,27 @@ impl Board<'_>  {
     fn parse(&self) -> ParsedBoard {
         let current_board = fs::read_to_string(self.current_board_path).unwrap();
         let layout = fs::read_to_string(self.layout_path).unwrap();
-        let mut tiles = vec![];
 
-        for l in layout.split_terminator("\n") {
-            let mut row_tiles = vec![];
-            for tile in l.chars() {
-                let t = match tile {
-                    '.' => Tile::Empty,
-                    '1' => Tile::Start,
-                    '2' => Tile::DoubleLetter,
-                    '3' => Tile::TripleLetter,
-                    '4' => Tile::DoubleWord,
-                    '5' => Tile::TripleWord,
-                    _ => panic!("Invalid tile")
-                };
-
-                row_tiles.push(t);
-            }
-            tiles.push(row_tiles);
-        }
+        let mut tiles: Vec<Vec<Tile>> =
+            layout
+                .split_terminator("\n")
+                .map(|line| {
+                    line
+                        .chars()
+                        .map(|tile| {
+                            match tile {
+                                '.' => Tile::Empty,
+                                '1' => Tile::Start,
+                                '2' => Tile::DoubleLetter,
+                                '3' => Tile::TripleLetter,
+                                '4' => Tile::DoubleWord,
+                                '5' => Tile::TripleWord,
+                                _ => panic!("Invalid tile")
+                            }
+                        })
+                        .collect()
+                })
+                .collect();
 
         for (y, l) in current_board.split_terminator("\n").enumerate() {
             for (x, c) in l.chars().enumerate() {
