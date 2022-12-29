@@ -382,18 +382,28 @@ mod tests {
         let lp_path = String::from("data/test/letterpoints.txt");
         let letter_scorer = LetterScorer::parse(&lp_path);
 
-        // Regular word
+        // Hits no special tiles
         let word = String::from("TEST");
         let letters = String::from("TEST");
         let score = letter_scorer.score_with_board(&word, &letters, &board, 'H', (7, 7));
-
         assert_eq!(score, 7);
 
+        // Hits a double letter
         let word = String::from("ZOUTIG");
         let letters = String::from("ZOUTIG");
         let score = letter_scorer.score_with_board(&word, &letters, &board, 'H', (7, 7));
-
         assert_eq!(score, 30);
+
+        // Hits a double and triple letter
+        let word = String::from("ZOUTIG");
+        let letters = String::from("ZOUTIG");
+        let score = letter_scorer.score_with_board(&word, &letters, &board, 'H', (0, 4));
+        assert_eq!(score, 90);
+
+        // Test when a word is out of bounds (so doesn't fit)
+        // Test double letter and triple letter
+        // Test vertical words
+        // Test when there's already letters in the grid
     }
 
     #[test]
