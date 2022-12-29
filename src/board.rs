@@ -60,7 +60,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn test_combinations_for() {
+    fn test_plays_teers() {
         let db_file = String::from("data/test/dictionary.sqlite");
         if Path::new(&db_file).is_file() {
             fs::remove_file(db_file).unwrap();
@@ -80,6 +80,34 @@ mod tests {
             String::from("EERST"),
             String::from("ESTER"),
             String::from("RESET")
+        ]);
+    }
+
+    #[test]
+    #[serial]
+    fn test_plays_joker() {
+        let db_file = String::from("data/test/dictionary.sqlite");
+        if Path::new(&db_file).is_file() {
+            fs::remove_file(db_file).unwrap();
+        }
+
+        let base_path = String::from("data/test");
+        let dictionary = generate(base_path);
+
+        let board = Board {
+            letters: &String::from("T??RS"),
+            dictionary: &dictionary
+        };
+
+        assert_eq!(board.plays(), vec![
+            String::from("ER"),
+            String::from("ZE"),
+            String::from("EET"),
+            String::from("EERST"),
+            String::from("ESTER"),
+            String::from("RESET"),
+            String::from("STAAR"),
+            String::from("STEUR")
         ]);
     }
 }

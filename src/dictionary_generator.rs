@@ -98,7 +98,7 @@ impl Dictionary {
     fn valid_word(&self, word: &String) -> bool {
         let mut valid_chars = true;
         for c in word.chars() {
-            if !('A'..='Z').contains(&c) {
+            if !('A'..='Z').contains(&c) && c != '?' {
                 valid_chars = false;
                 break;
             }
@@ -270,6 +270,20 @@ mod tests {
                 String::from("EERST"),
                 String::from("ESTER"),
                 String::from("RESET")
+            ]
+        );
+
+        let word = String::from("T??RS");
+        let mut set = HashSet::new();
+        set.insert(word);
+        assert_eq!(
+            dictionary.get_anagrams_for(&set),
+            vec![
+                String::from("EERST"),
+                String::from("ESTER"),
+                String::from("RESET"),
+                String::from("STEUR"),
+                String::from("STAAR")
             ]
         );
     }
