@@ -65,12 +65,7 @@ impl Dictionary {
         }
 
         let conn = Connection::open(&self.db_path).unwrap();
-        let mut prime_factors = vec![];
-
-        for string in strings {
-            let factor = self.prime_factor(string);
-            prime_factors.push(factor);
-        }
+        let prime_factors = self.get_prime_factors(strings);
 
         let factors = prime_factors
             .iter()
@@ -91,6 +86,36 @@ impl Dictionary {
         anagrams
     }
 
+    fn get_prime_factors(&self, strings: &HashSet<String>) -> HashSet<u128> {
+        let mut prime_factors = HashSet::new();
+
+        for string in strings {
+            let base = string.replace("?", "");
+            let factor = self.prime_factor(&base);
+
+            if base.len() < string.len() {
+                let joker_count = string.len() - base.len();
+                // Determines how many possible joker factors I need to add:
+                let total = LETTER_COUNT.pow(joker_count as u32);
+
+                for i in 0..total {
+                    let mut new_factor = factor;
+                    for j in 0..joker_count {
+                        let div = LETTER_COUNT.pow(j as u32);
+                        let p = (i / div) % LETTER_COUNT;
+
+                        new_factor *= self.primes[p];
+                    }
+                    prime_factors.insert(new_factor);
+                }
+            } else {
+                prime_factors.insert(factor);
+            }
+        }
+
+        prime_factors
+    }
+
     fn generated(&self) -> bool {
         Path::new(&self.db_path).is_file()
     }
@@ -98,7 +123,7 @@ impl Dictionary {
     fn valid_word(&self, word: &String) -> bool {
         let mut valid_chars = true;
         for c in word.chars() {
-            if !('A'..='Z').contains(&c) {
+            if !('A'..='Z').contains(&c) && c != '?' {
                 valid_chars = false;
                 break;
             }
@@ -270,6 +295,20 @@ mod tests {
                 String::from("EERST"),
                 String::from("ESTER"),
                 String::from("RESET")
+            ]
+        );
+
+        let word = String::from("T??RS");
+        let mut set = HashSet::new();
+        set.insert(word);
+        assert_eq!(
+            dictionary.get_anagrams_for(&set),
+            vec![
+                String::from("EERST"),
+                String::from("ESTER"),
+                String::from("RESET"),
+                String::from("STAAR"),
+                String::from("STEUR")
             ]
         );
     }
