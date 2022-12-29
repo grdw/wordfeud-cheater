@@ -6,53 +6,17 @@ pub struct Board<'a> {
     pub dictionary: &'a Dictionary,
     pub letters: &'a String,
     pub letterpoints_path: &'a String,
-    pub layout_path: &'a String,
-    pub current_board_path: &'a String
+    parsed_board: ParsedBoard
 }
 
 struct ParsedBoard {
     tiles: Vec<Vec<Tile>>
 }
 
-#[derive(Debug)]
-enum Tile {
-    Empty,
-    Letter(char),
-    Start,
-    DoubleLetter,
-    TripleLetter,
-    DoubleWord,
-    TripleWord,
-}
-
-impl Board<'_>  {
-    pub fn new<'a>(
-        letters: &'a String,
-        dictionary: &'a Dictionary,
-        letterpoints_path: &'a String,
-        layout_path: &'a String,
-        current_board_path: &'a String) -> Board<'a> {
-
-        Board {
-            letters: letters,
-            dictionary: dictionary,
-            letterpoints_path: letterpoints_path,
-            layout_path: layout_path,
-            current_board_path: current_board_path
-        }
-    }
-
-    pub fn plays(&self) -> Vec<String> {
-        let combos = self.combinations();
-        let mut anagrams = self.dictionary.get_anagrams_for(&combos);
-
-        anagrams.sort_by(|a, b| a.len().cmp(&b.len()));
-        anagrams
-    }
-
-    fn parse(&self) -> ParsedBoard {
-        let current_board = fs::read_to_string(self.current_board_path).unwrap();
-        let layout = fs::read_to_string(self.layout_path).unwrap();
+impl ParsedBoard {
+    fn parse(layout_path: &String, current_board_path: &String) -> ParsedBoard {
+        let current_board = fs::read_to_string(current_board_path).unwrap();
+        let layout = fs::read_to_string(layout_path).unwrap();
 
         let mut tiles: Vec<Vec<Tile>> =
             layout
@@ -86,6 +50,42 @@ impl Board<'_>  {
         }
 
         ParsedBoard { tiles: tiles }
+    }
+}
+
+#[derive(Debug)]
+enum Tile {
+    Empty,
+    Letter(char),
+    Start,
+    DoubleLetter,
+    TripleLetter,
+    DoubleWord,
+    TripleWord,
+}
+
+impl Board<'_>  {
+    pub fn new<'a>(
+        letters: &'a String,
+        dictionary: &'a Dictionary,
+        letterpoints_path: &'a String,
+        layout_path: &'a String,
+        current_board_path: &'a String) -> Board<'a> {
+
+        Board {
+            letters: letters,
+            dictionary: dictionary,
+            letterpoints_path: letterpoints_path,
+            parsed_board: ParsedBoard::parse(layout_path, current_board_path)
+        }
+    }
+
+    pub fn plays(&self) -> Vec<String> {
+        let combos = self.combinations();
+        let mut anagrams = self.dictionary.get_anagrams_for(&combos);
+
+        anagrams.sort_by(|a, b| a.len().cmp(&b.len()));
+        anagrams
     }
 
     fn combinations(&self) -> HashSet<String> {
@@ -201,28 +201,16 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_parse_board() {
-        let db_file = String::from("data/test/dictionary.sqlite");
-        if Path::new(&db_file).is_file() {
-            fs::remove_file(db_file).unwrap();
-        }
-
-        let base_path = String::from("data/test");
-        let letters = String::from("T??RS");
-        let dictionary = generate(base_path);
-        let lp_path = String::from("data/test/letterpoints.txt");
         let layout_path = String::from("layout.default.board");
         let current_board_path = String::from("current.board");
 
-        let board = Board::new(
-            &letters,
-            &dictionary,
-            &lp_path,
+        let board = ParsedBoard::parse(
             &layout_path,
             &current_board_path
         );
 
-        board.parse();
+        assert_eq!(board.tiles.len(), 15);
+        assert_eq!(board.tiles[0].len(), 15);
     }
 }
