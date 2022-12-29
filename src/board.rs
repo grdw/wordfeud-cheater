@@ -1,5 +1,6 @@
 use crate::dictionary_generator::Dictionary;
 use std::collections::HashSet;
+use std::fs;
 
 pub struct Board<'a> {
     pub dictionary: &'a Dictionary,
@@ -7,6 +8,21 @@ pub struct Board<'a> {
     pub letterpoints_path: &'a String,
     pub layout_path: &'a String,
     pub current_board_path: &'a String
+}
+
+struct ParsedBoard {
+    tiles: Vec<Vec<Tile>>
+}
+
+#[derive(Debug)]
+enum Tile {
+    Empty,
+    Letter(char),
+    Start,
+    DoubleLetter,
+    TripleLetter,
+    DoubleWord,
+    TripleWord,
 }
 
 impl Board<'_>  {
@@ -25,11 +41,49 @@ impl Board<'_>  {
             current_board_path: current_board_path
         }
     }
+
     pub fn plays(&self) -> Vec<String> {
         let combos = self.combinations();
         let mut anagrams = self.dictionary.get_anagrams_for(&combos);
+
         anagrams.sort_by(|a, b| a.len().cmp(&b.len()));
         anagrams
+    }
+
+    fn parse(&self) -> ParsedBoard {
+        let current_board = fs::read_to_string(self.current_board_path).unwrap();
+        let layout = fs::read_to_string(self.layout_path).unwrap();
+        let mut tiles = vec![];
+
+        for l in layout.split_terminator("\n") {
+            let mut row_tiles = vec![];
+            for tile in l.chars() {
+                let t = match tile {
+                    '.' => Tile::Empty,
+                    '1' => Tile::Start,
+                    '2' => Tile::DoubleLetter,
+                    '3' => Tile::TripleLetter,
+                    '4' => Tile::DoubleWord,
+                    '5' => Tile::TripleWord,
+                    _ => panic!("Invalid tile")
+                };
+
+                row_tiles.push(t);
+            }
+            tiles.push(row_tiles);
+        }
+
+        for (y, l) in current_board.split_terminator("\n").enumerate() {
+            for (x, c) in l.chars().enumerate() {
+                if c == '.' {
+                    continue
+                }
+
+                tiles[y][x] = Tile::Letter(c);
+            }
+        }
+
+        ParsedBoard { tiles: tiles }
     }
 
     fn combinations(&self) -> HashSet<String> {
@@ -142,5 +196,31 @@ mod tests {
             String::from("STAAR"),
             String::from("STEUR")
         ]);
+    }
+
+    #[test]
+    #[serial]
+    fn test_parse_board() {
+        let db_file = String::from("data/test/dictionary.sqlite");
+        if Path::new(&db_file).is_file() {
+            fs::remove_file(db_file).unwrap();
+        }
+
+        let base_path = String::from("data/test");
+        let letters = String::from("T??RS");
+        let dictionary = generate(base_path);
+        let lp_path = String::from("data/test/letterpoints.txt");
+        let layout_path = String::from("layout.default.board");
+        let current_board_path = String::from("current.board");
+
+        let board = Board::new(
+            &letters,
+            &dictionary,
+            &lp_path,
+            &layout_path,
+            &current_board_path
+        );
+
+        board.parse();
     }
 }
