@@ -2,11 +2,29 @@ use crate::dictionary_generator::Dictionary;
 use std::collections::HashSet;
 
 pub struct Board<'a> {
+    pub dictionary: &'a Dictionary,
     pub letters: &'a String,
-    pub dictionary: &'a Dictionary
+    pub letterpoints_path: &'a String,
+    pub layout_path: &'a String,
+    pub current_board_path: &'a String
 }
 
 impl Board<'_>  {
+    pub fn new<'a>(
+        letters: &'a String,
+        dictionary: &'a Dictionary,
+        letterpoints_path: &'a String,
+        layout_path: &'a String,
+        current_board_path: &'a String) -> Board<'a> {
+
+        Board {
+            letters: letters,
+            dictionary: dictionary,
+            letterpoints_path: letterpoints_path,
+            layout_path: layout_path,
+            current_board_path: current_board_path
+        }
+    }
     pub fn plays(&self) -> Vec<String> {
         let combos = self.combinations();
         let mut anagrams = self.dictionary.get_anagrams_for(&combos);
@@ -67,12 +85,19 @@ mod tests {
         }
 
         let base_path = String::from("data/test");
+        let letters = String::from("TEERS");
         let dictionary = generate(base_path);
+        let lp_path = String::from("data/test/letterpoints.txt");
+        let layout_path = String::from("layout.default.board");
+        let current_board_path = String::from("current.board");
 
-        let board = Board {
-            letters: &String::from("TEERS"),
-            dictionary: &dictionary
-        };
+        let board = Board::new(
+            &letters,
+            &dictionary,
+            &lp_path,
+            &layout_path,
+            &current_board_path
+        );
 
         assert_eq!(board.plays(), vec![
             String::from("ER"),
@@ -92,12 +117,19 @@ mod tests {
         }
 
         let base_path = String::from("data/test");
+        let letters = String::from("T??RS");
         let dictionary = generate(base_path);
+        let lp_path = String::from("data/test/letterpoints.txt");
+        let layout_path = String::from("layout.default.board");
+        let current_board_path = String::from("current.board");
 
-        let board = Board {
-            letters: &String::from("T??RS"),
-            dictionary: &dictionary
-        };
+        let board = Board::new(
+            &letters,
+            &dictionary,
+            &lp_path,
+            &layout_path,
+            &current_board_path
+        );
 
         assert_eq!(board.plays(), vec![
             String::from("ER"),
