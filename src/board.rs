@@ -101,6 +101,7 @@ mod tests {
 
         assert_eq!(board.plays(), vec![
             String::from("ER"),
+            String::from("MN"),
             String::from("ZE"),
             String::from("EET"),
             String::from("EERST"),
