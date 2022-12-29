@@ -40,10 +40,22 @@ impl Board<'_>  {
 
     fn optimal_plays(&self) -> Vec<Play> {
         let mut plays = vec![];
-        let mut anagrams = self.anagrams();
 
         if self.parsed_board.is_opening_turn() {
-            // make sure it hits the start (7,7)
+            let (endx, y) = self.parsed_board.origin();
+            let anagrams = self.anagrams();
+            let word = &anagrams[0]; // This can _and_ should be optimized
+            let sx = endx - word.len() + 1;
+
+            for tx in sx..=endx {
+                plays.push(
+                    Play {
+                        points: self.scorer.score(word, self.letters),
+                        position: (tx, y),
+                        word: word.to_string()
+                    }
+                );
+            }
         } else {
             // Start by detecting where each letter is in the tiles
             // then start connecting them with your existing letters.
@@ -93,7 +105,7 @@ struct ParsedBoard {
     tiles: Vec<Vec<Tile>>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 enum Tile {
     Letter(char),
     Empty,
@@ -143,6 +155,23 @@ impl ParsedBoard {
         ParsedBoard { tiles: tiles }
     }
 
+    fn origin(&self) -> (usize, usize) {
+        let mut y = 0;
+        let mut x = 0;
+
+        for (ty, row) in self.tiles.iter().enumerate() {
+            for (tx, tile) in row.iter().enumerate() {
+                if let Tile::Start = tile {
+                    y = ty;
+                    x = tx;
+                    break;
+                }
+            }
+        }
+
+        (x, y)
+    }
+
     fn is_opening_turn(&self) -> bool {
         for row in self.tiles.iter() {
             for tile in row {
@@ -184,10 +213,59 @@ impl LetterScorer {
         LetterScorer { points: score }
     }
 
+    fn score_with_board(&self,
+                        word: &String,
+                        letters: &String,
+                        board: &ParsedBoard,
+                        direction: char,
+                        (x, y): (usize, usize)) -> u16 {
+
+        let mut total_points = 0;
+        let mut points_letters = letters.replace("?", "");
+        let range = 0..word.len();
+
+        let tiles: Vec<&Tile> = match direction {
+            'H' => {
+                let start_row = &board.tiles[y];
+                range.map(|i| &start_row[x + i]).collect()
+            },
+            'V' => range.map(|i| &board.tiles[y + i][x]).collect(),
+            _   => panic!("Invalid direction")
+        };
+
+        for (i, w) in word.chars().enumerate() {
+            if points_letters.contains(w) {
+                let multiplier = match tiles[i] {
+                    Tile::DoubleLetter => 2,
+                    Tile::TripleLetter => 3,
+                    _ => 1
+                };
+
+                total_points += self.points[&w] * multiplier;
+                points_letters = points_letters.replacen(&w.to_string(), "", 1);
+            }
+        }
+
+        if tiles.contains(&&Tile::DoubleWord) {
+            total_points *= 2;
+        }
+
+        if tiles.contains(&&Tile::TripleWord) {
+            total_points *= 3;
+        }
+
+        total_points
+    }
+
     fn score(&self, word: &String, letters: &String) -> u16 {
         let mut total_points = 0;
+        let mut points_letters = letters.replace("?", "");
+
         for w in word.chars() {
-            total_points += self.points[&w];
+            if points_letters.contains(w) {
+                total_points += self.points[&w];
+                points_letters = points_letters.replacen(&w.to_string(), "", 1);
+            }
         }
         total_points
     }
@@ -257,20 +335,20 @@ mod tests {
         );
 
         assert_eq!(board.anagrams(), vec![
-            String::from("STEUR"),
             String::from("EERST"),
             String::from("ESTER"),
             String::from("RESET"),
             String::from("STAAR"),
-            String::from("ZE"),
+            String::from("STEUR"),
             String::from("EET"),
+            String::from("ER"),
             String::from("MN"),
-            String::from("ER")
+            String::from("ZE")
         ]);
 
         assert_eq!(board.optimal_plays(), vec![
-            Play { word: String::from("STEUR"), position: (7, 7), points: 18 },
-            Play { word: String::from("STEUR"), position: (3, 7), points: 18 },
+            Play { word: String::from("EERST"), position: (7, 7), points: 12 },
+            Play { word: String::from("EERST"), position: (3, 7), points: 12 },
         ]);
     }
 
@@ -294,5 +372,53 @@ mod tests {
         assert_eq!(board.tiles.len(), 15);
         assert_eq!(board.tiles[0].len(), 15);
         assert_eq!(board.is_opening_turn(), false);
+    }
+
+    #[test]
+    fn test_score_word_with_board() {
+        let layout_path = String::from("layout.default.board");
+        let current_board_path = String::from("current.board");
+        let board = ParsedBoard::parse(&layout_path, &current_board_path);
+        let lp_path = String::from("data/test/letterpoints.txt");
+        let letter_scorer = LetterScorer::parse(&lp_path);
+
+        // Regular word
+        let word = String::from("TEST");
+        let letters = String::from("TEST");
+        let score = letter_scorer.score_with_board(&word, &letters, &board, 'H', (7, 7));
+
+        assert_eq!(score, 7);
+
+        let word = String::from("ZOUTIG");
+        let letters = String::from("ZOUTIG");
+        let score = letter_scorer.score_with_board(&word, &letters, &board, 'H', (7, 7));
+
+        assert_eq!(score, 30);
+    }
+
+    #[test]
+    fn test_score_word() {
+        let lp_path = String::from("data/test/letterpoints.txt");
+        let letter_scorer = LetterScorer::parse(&lp_path);
+
+        // Regular word
+        let word = String::from("TEST");
+        let letters = String::from("TEST");
+        assert_eq!(letter_scorer.score(&word, &letters), 7);
+
+        // A joker is 0 points same character
+        let word = String::from("TEST");
+        let letters = String::from("TES?");
+        assert_eq!(letter_scorer.score(&word, &letters), 5);
+
+        // A joker is 0 points diff character
+        let word = String::from("PEST");
+        let letters = String::from("TES?");
+        assert_eq!(letter_scorer.score(&word, &letters), 5);
+
+        // Having a joker but not using it
+        let word = String::from("PEST");
+        let letters = String::from("TESP?");
+        assert_eq!(letter_scorer.score(&word, &letters), 9);
     }
 }
