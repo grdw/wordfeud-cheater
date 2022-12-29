@@ -34,7 +34,8 @@ fn main() {
         &layout_path,
         &current_board_path
     );
-    println!("{:?}", board.plays());
+
+    println!("{:?}", board.anagrams());
 }
 
 fn ensure_file_exists(file_path: &String) {
