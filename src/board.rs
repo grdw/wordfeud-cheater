@@ -183,6 +183,35 @@ impl ParsedBoard {
 
         true
     }
+
+    fn play_points(&self) -> Vec<Vec<(usize, usize)>> {
+        let mut coords = vec![];
+        let mut start_coords = vec![];
+        for (y, row) in self.tiles.iter().enumerate() {
+            for (x, tile) in row.iter().enumerate() {
+                if let Tile::Letter(_) = tile {
+                    start_coords.push((x, y));
+                }
+            }
+        }
+
+        for i in 1..7 {
+            let mut sub_coords = vec![];
+            for (x, y) in &start_coords {
+                let mut ranges = vec![];
+                //let r = *x..(x + i);
+                //let r2 = (x - i)..*x;
+                //let r3 = *y..(y + i);
+                //let r4 = (y - i)..*y;
+
+                //println!("{:?} {:?} {:?} {:?}", r, r2, r3, r4);
+            }
+
+            coords.push(sub_coords);
+        }
+
+        coords
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -375,7 +404,7 @@ mod tests {
     }
 
     #[test]
-    fn test_score_word_with_board() {
+    fn test_score_word_with_empty_board() {
         let layout_path = String::from("layout.default.board");
         let current_board_path = String::from("current.board");
         let board = ParsedBoard::parse(&layout_path, &current_board_path);
@@ -404,6 +433,18 @@ mod tests {
         // Test double letter and triple letter
         // Test vertical words
         // Test when there's already letters in the grid
+    }
+
+    #[test]
+    fn test_score_word_with_full_board() {
+        let layout_path = String::from("layout.default.board");
+        let current_board_path = String::from("data/test/test_complex.board");
+        let board = ParsedBoard::parse(&layout_path, &current_board_path);
+        let lp_path = String::from("data/test/letterpoints.txt");
+        let letter_scorer = LetterScorer::parse(&lp_path);
+
+        board.play_points();
+        // Hits no special tiles
     }
 
     #[test]
