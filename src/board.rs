@@ -198,7 +198,7 @@ impl ParsedBoard {
         for i in 1..7 {
             let mut sub_coords = vec![];
             for (x, y) in &start_coords {
-                let mut ranges = vec![];
+                let mut ranges: Vec<(usize, usize)> = vec![];
                 //let r = *x..(x + i);
                 //let r2 = (x - i)..*x;
                 //let r3 = *y..(y + i);
